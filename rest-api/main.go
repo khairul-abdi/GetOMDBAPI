@@ -44,6 +44,20 @@ type movie struct {
 	Image   string `json:"Poster"`
 }
 
+type detailMovie struct {
+	MovieID  string `gorm:"type:varchar(12);column:movie_id;primary_key" json:"imdbID"`
+	Title    string `json:"Title"`
+	Year     string `gorm:"type:varchar(6)" json:"Year"`
+	Released string `gorm:"type:varchar(100)" json:"Released"`
+	Genre    string `gorm:"type:varchar(250)" json:"Genre"`
+	Director string `gorm:"type:varchar(100)" json:"Director"`
+	Writer   string `json:"Writer"`
+	Actors   string `json:"Actors"`
+	Language string `json:"Language"`
+	Country  string `json:"Country"`
+	Image    string `json:"Poster"`
+}
+
 type movieList struct {
 	List []movie `json:"Search"`
 }
@@ -56,15 +70,25 @@ func (list movieList) save() {
 	}
 	db.Debug().DropTableIfExists(&movie{})
 	db.AutoMigrate(&movie{})
-	fmt.Println("List Data From API =>", list)
 	for _, row := range list.List {
+		log.Println("ROW ===>> ", &row)
 		db.Debug().Create(&row)
 	}
 }
 
-func tmdbImplementation(w http.ResponseWriter, r *http.Request) {
+func (detail detailMovie) save() {
+	db, err := gorm.Open("mysql", DATABASEURL)
+	defer db.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+	db.Debug().DropTableIfExists(&detailMovie{})
+	db.AutoMigrate(&detailMovie{})
+	db.Debug().Create(&detail)
+}
+
+func getSearchOmdb(w http.ResponseWriter, r *http.Request) {
 	movieName := r.URL.Query().Get("title")
-	log.Println("MOVIENAME => ", movieName)
 	if movieName == "" {
 		log.Println("title not found")
 		w.Write([]byte("title must be provided via QueryParams"))
@@ -72,34 +96,36 @@ func tmdbImplementation(w http.ResponseWriter, r *http.Request) {
 	}
 
 	page := r.URL.Query().Get("page")
-	log.Println("page => ", page)
 	if page == "" {
 		page = "1"
 	}
+
 	//For receiving API call
 	client := http.Client{}
-	// http: //www.omdbapi.com/?apikey=faf7e5bb&s=Batman&page=2
 	APIURLReq := APIURL + "&s=" + movieName + "&page=" + page
 	movieRequest, err := http.NewRequest(http.MethodGet, APIURLReq, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	movieResponse, err := client.Do(movieRequest)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	movieBody, err := ioutil.ReadAll(movieResponse.Body)
-	// fmt.Println("BODY => ", movieBody)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	list := movieList{}
 	err = json.Unmarshal(movieBody, &list)
-	fmt.Println("LIST UNMARSHAL => ", list)
+
 	if err != nil {
 		log.Fatal(err)
 	}
 	list.save()
+
 	//For sending API call
 	w.Header().Set("Access-Control-Allow-Origin", "*") //This heading is necesary for cross origin
 	w.Header().Set("Content-Type", "application/json")
@@ -107,9 +133,46 @@ func tmdbImplementation(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func getSearchDetail(w http.ResponseWriter, r *http.Request) {
+	imdbID := r.URL.Query().Get("id")
+	if imdbID == "" {
+		log.Println("ID for imdbID not found")
+		w.Write([]byte("ID must be provided via QueryParams"))
+	}
+
+	// For receiving API Call
+	client := http.Client{}
+	APIURLReq := APIURL + "&i=" + imdbID
+	movieRequest, err := http.NewRequest(http.MethodGet, APIURLReq, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	movieResponse, err := client.Do(movieRequest)
+
+	movieBody, err := ioutil.ReadAll(movieResponse.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	detail := detailMovie{}
+	err = json.Unmarshal(movieBody, &detail)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	detail.save()
+
+	// For sending API CALL
+	w.Header().Set("Access-Control-Allow-Origin", "*") //This heading is necesary for cross origin
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(detail)
+}
+
 func main() {
 	router := mux.NewRouter()
-	router.HandleFunc("/search", tmdbImplementation)
+	router.HandleFunc("/search", getSearchOmdb)
+	router.HandleFunc("/searchDetail", getSearchDetail)
 	fmt.Println("Listening of port 8090")
 	http.ListenAndServe(":8090", router)
 }
