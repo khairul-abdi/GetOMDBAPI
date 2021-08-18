@@ -16,7 +16,7 @@ import (
 const APIKEY = "faf7e5bb"
 
 //APIURL for API
-const APIURL = "http://www.omdbapi.com/?apikey=" + APIKEY + "&s=Batman&page=1"
+const APIURL = "http://www.omdbapi.com/?apikey=" + APIKEY
 
 //DBNAME variable for database name
 const DBNAME = "RestGoMovie"
@@ -63,9 +63,24 @@ func (list movieList) save() {
 }
 
 func tmdbImplementation(w http.ResponseWriter, r *http.Request) {
+	movieName := r.URL.Query().Get("title")
+	log.Println("MOVIENAME => ", movieName)
+	if movieName == "" {
+		log.Println("title not found")
+		w.Write([]byte("title must be provided via QueryParams"))
+		return
+	}
+
+	page := r.URL.Query().Get("page")
+	log.Println("page => ", page)
+	if page == "" {
+		page = "1"
+	}
 	//For receiving API call
 	client := http.Client{}
-	movieRequest, err := http.NewRequest(http.MethodGet, APIURL, nil)
+	// http: //www.omdbapi.com/?apikey=faf7e5bb&s=Batman&page=2
+	APIURLReq := APIURL + "&s=" + movieName + "&page=" + page
+	movieRequest, err := http.NewRequest(http.MethodGet, APIURLReq, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -94,7 +109,7 @@ func tmdbImplementation(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	router := mux.NewRouter()
-	router.HandleFunc("/", tmdbImplementation)
+	router.HandleFunc("/search", tmdbImplementation)
 	fmt.Println("Listening of port 8090")
-	http.ListenAndServe(":8080", router)
+	http.ListenAndServe(":8090", router)
 }
