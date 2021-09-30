@@ -13,10 +13,13 @@ import (
 )
 
 //APIKEY variable where you have to paste your API key
-const APIKEY = "faf7e5bb"
+// const APIKEY = "faf7e5bb"
+const APIKEY = "820758bb"
 
 //APIURL for API
 const APIURL = "http://www.omdbapi.com/?apikey=" + APIKEY
+
+//http://www.omdbapi.com/?apikey=faf7e5bb&s=Batman&page=2
 
 //DBNAME variable for database name
 const DBNAME = "RestGoMovie"
@@ -25,7 +28,7 @@ const DBNAME = "RestGoMovie"
 const DBUSERNAME = "root"
 
 //DBPASSWORD variable for database password
-const DBPASSWORD = ""
+const DBPASSWORD = "123456"
 
 //DBHOST variable for database address
 const DBHOST = "127.0.0.1"
@@ -40,7 +43,7 @@ type movie struct {
 	MovieID string `gorm:"type:varchar(12);column:movie_id;primary_key" json:"imdbID"`
 	Title   string `json:"Title"`
 	Type    string `gorm:"type:varchar(100)" json:"Type"`
-	Year    string `gorm:"type:varchar(6)" json:"Year"`
+	Year    string `gorm:"type:varchar(12)" json:"Year"`
 	Image   string `json:"Poster"`
 }
 
